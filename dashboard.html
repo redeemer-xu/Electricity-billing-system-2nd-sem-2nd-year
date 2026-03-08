@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Electricity Billing Dashboard</title>
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css"> <!-- background image -->
 </head>
-<body class="bg-light">
+<body>
 
 <div class="container-fluid mt-4">
   <div class="row">
-    <!-- Sidebar -->
+    <!-- Sidebar Form -->
     <div class="col-md-3">
       <div class="card shadow">
         <div class="card-header bg-primary text-white">
@@ -21,27 +21,27 @@
           <form id="billingForm">
             <div class="mb-3">
               <label class="form-label">Consumer Name</label>
-              <input type="text" class="form-control" id="consumerName" required>
+              <input type="text" id="consumerName" class="form-control" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Units Consumed (kWh)</label>
-              <input type="number" class="form-control" id="units" required>
+              <input type="number" id="units" class="form-control" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Tariff Category</label>
-              <select class="form-select" id="tariff">
+              <select id="tariff" class="form-select">
                 <option value="residential">Residential</option>
                 <option value="commercial">Commercial</option>
                 <option value="industrial">Industrial</option>
               </select>
             </div>
-            <button type="button" class="btn btn-success w-100" onclick="calculateBill()">Add Bill</button>
+            <button type="submit" class="btn btn-success w-100">Add Bill</button>
           </form>
         </div>
       </div>
     </div>
 
-    <!-- Dashboard Main -->
+    <!-- Dashboard Table -->
     <div class="col-md-9">
       <div class="card shadow">
         <div class="card-header bg-dark text-white">
@@ -58,11 +58,10 @@
                 <th>Fixed Charge</th>
                 <th>Tax</th>
                 <th>Total Bill</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="billTable">
-              <!-- Rows will be added dynamically -->
-            </tbody>
+            <tbody id="billTable"></tbody>
           </table>
         </div>
       </div>
@@ -70,40 +69,87 @@
   </div>
 </div>
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-function calculateBill() {
-  let consumer = document.getElementById("consumerName").value;
-  let units = parseFloat(document.getElementById("units").value);
-  let tariff = document.getElementById("tariff").value;
+let editIndex = null;
 
+document.getElementById("billingForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  if (editIndex === null) {
+    addBill();
+  } else {
+    updateBill();
+  }
+});
+
+function calculateCharges(units, tariff) {
   let rate, fixedCharge, taxRate = 0.12;
-
   if (tariff === "residential") { rate = 10; fixedCharge = 50; }
   else if (tariff === "commercial") { rate = 15; fixedCharge = 100; }
-  else if (tariff === "industrial") { rate = 20; fixedCharge = 200; }
+  else { rate = 20; fixedCharge = 200; }
 
   let baseAmount = units * rate;
   let tax = baseAmount * taxRate;
   let total = baseAmount + fixedCharge + tax;
+  return { baseAmount, fixedCharge, tax, total };
+}
 
-  // Add row to table
+function addBill() {
+  let consumer = document.getElementById("consumerName").value;
+  let units = parseFloat(document.getElementById("units").value);
+  let tariff = document.getElementById("tariff").value;
+
+  let charges = calculateCharges(units, tariff);
+
   let table = document.getElementById("billTable");
   let row = table.insertRow();
   row.innerHTML = `
     <td>${consumer}</td>
     <td>${units}</td>
     <td>${tariff}</td>
-    <td>₱${baseAmount.toFixed(2)}</td>
-    <td>₱${fixedCharge.toFixed(2)}</td>
-    <td>₱${tax.toFixed(2)}</td>
-    <td><strong>₱${total.toFixed(2)}</strong></td>
+    <td>₱${charges.baseAmount.toFixed(2)}</td>
+    <td>₱${charges.fixedCharge.toFixed(2)}</td>
+    <td>₱${charges.tax.toFixed(2)}</td>
+    <td><strong>₱${charges.total.toFixed(2)}</strong></td>
+    <td>
+      <button class="btn btn-sm btn-warning" onclick="editBill(this)">Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteBill(this)">Delete</button>
+    </td>
   `;
-
-  // Reset form
   document.getElementById("billingForm").reset();
+}
+
+function editBill(button) {
+  let row = button.parentElement.parentElement;
+  editIndex = row.rowIndex - 1; // adjust for header row
+  document.getElementById("consumerName").value = row.cells[0].innerText;
+  document.getElementById("units").value = row.cells[1].innerText;
+  document.getElementById("tariff").value = row.cells[2].innerText;
+}
+
+function updateBill() {
+  let table = document.getElementById("billTable");
+  let row = table.rows[editIndex];
+  let consumer = document.getElementById("consumerName").value;
+  let units = parseFloat(document.getElementById("units").value);
+  let tariff = document.getElementById("tariff").value;
+
+  let charges = calculateCharges(units, tariff);
+
+  row.cells[0].innerText = consumer;
+  row.cells[1].innerText = units;
+  row.cells[2].innerText = tariff;
+  row.cells[3].innerText = "₱" + charges.baseAmount.toFixed(2);
+  row.cells[4].innerText = "₱" + charges.fixedCharge.toFixed(2);
+  row.cells[5].innerText = "₱" + charges.tax.toFixed(2);
+  row.cells[6].innerHTML = "<strong>₱" + charges.total.toFixed(2) + "</strong>";
+
+  editIndex = null;
+  document.getElementById("billingForm").reset();
+}
+
+function deleteBill(button) {
+  let row = button.parentElement.parentElement;
+  row.remove();
 }
 </script>
 
