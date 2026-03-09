@@ -44,8 +44,10 @@
     <!-- Dashboard Table -->
     <div class="col-md-9">
       <div class="card shadow">
-        <div class="card-header bg-dark text-white">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
           <h4>Billing Dashboard</h4>
+          <!-- Button to show consumers -->
+          <button class="btn btn-info btn-sm" onclick="showConsumers()">Show All Consumers</button>
         </div>
         <div class="card-body">
           <table class="table table-striped table-hover">
@@ -54,15 +56,17 @@
                 <th>Consumer</th>
                 <th>Units</th>
                 <th>Category</th>
-                <th>Base Amount</th>
-                <th>Fixed Charge</th>
-                <th>Tax</th>
                 <th>Total Bill</th>
-                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="billTable"></tbody>
           </table>
+
+          <!-- Consumers list (hidden by default) -->
+          <div id="consumerList" class="mt-4" style="display:none;">
+            <h5>All Consumers</h5>
+            <ul class="list-group" id="consumersUl"></ul>
+          </div>
         </div>
       </div>
     </div>
@@ -70,86 +74,53 @@
 </div>
 
 <script>
-let editIndex = null;
+let consumers = []; // store consumer names
 
 document.getElementById("billingForm").addEventListener("submit", function(e) {
   e.preventDefault();
-  if (editIndex === null) {
-    addBill();
-  } else {
-    updateBill();
-  }
+  addBill();
 });
-
-function calculateCharges(units, tariff) {
-  let rate, fixedCharge, taxRate = 0.12;
-  if (tariff === "residential") { rate = 10; fixedCharge = 50; }
-  else if (tariff === "commercial") { rate = 15; fixedCharge = 100; }
-  else { rate = 20; fixedCharge = 200; }
-
-  let baseAmount = units * rate;
-  let tax = baseAmount * taxRate;
-  let total = baseAmount + fixedCharge + tax;
-  return { baseAmount, fixedCharge, tax, total };
-}
 
 function addBill() {
   let consumer = document.getElementById("consumerName").value;
   let units = parseFloat(document.getElementById("units").value);
   let tariff = document.getElementById("tariff").value;
 
-  let charges = calculateCharges(units, tariff);
+  // Simple rate logic
+  let rate = (tariff === "residential") ? 10 : (tariff === "commercial") ? 15 : 20;
+  let fixedCharge = (tariff === "residential") ? 50 : (tariff === "commercial") ? 100 : 200;
+  let baseAmount = units * rate;
+  let tax = baseAmount * 0.12;
+  let total = baseAmount + fixedCharge + tax;
 
+  // Add row to table
   let table = document.getElementById("billTable");
   let row = table.insertRow();
   row.innerHTML = `
     <td>${consumer}</td>
     <td>${units}</td>
     <td>${tariff}</td>
-    <td>₱${charges.baseAmount.toFixed(2)}</td>
-    <td>₱${charges.fixedCharge.toFixed(2)}</td>
-    <td>₱${charges.tax.toFixed(2)}</td>
-    <td><strong>₱${charges.total.toFixed(2)}</strong></td>
-    <td>
-      <button class="btn btn-sm btn-warning" onclick="editBill(this)">Edit</button>
-      <button class="btn btn-sm btn-danger" onclick="deleteBill(this)">Delete</button>
-    </td>
+    <td><strong>₱${total.toFixed(2)}</strong></td>
   `;
+
+  // Save consumer name (avoid duplicates)
+  if (!consumers.includes(consumer)) {
+    consumers.push(consumer);
+  }
+
   document.getElementById("billingForm").reset();
 }
 
-function editBill(button) {
-  let row = button.parentElement.parentElement;
-  editIndex = row.rowIndex - 1; // adjust for header row
-  document.getElementById("consumerName").value = row.cells[0].innerText;
-  document.getElementById("units").value = row.cells[1].innerText;
-  document.getElementById("tariff").value = row.cells[2].innerText;
-}
-
-function updateBill() {
-  let table = document.getElementById("billTable");
-  let row = table.rows[editIndex];
-  let consumer = document.getElementById("consumerName").value;
-  let units = parseFloat(document.getElementById("units").value);
-  let tariff = document.getElementById("tariff").value;
-
-  let charges = calculateCharges(units, tariff);
-
-  row.cells[0].innerText = consumer;
-  row.cells[1].innerText = units;
-  row.cells[2].innerText = tariff;
-  row.cells[3].innerText = "₱" + charges.baseAmount.toFixed(2);
-  row.cells[4].innerText = "₱" + charges.fixedCharge.toFixed(2);
-  row.cells[5].innerText = "₱" + charges.tax.toFixed(2);
-  row.cells[6].innerHTML = "<strong>₱" + charges.total.toFixed(2) + "</strong>";
-
-  editIndex = null;
-  document.getElementById("billingForm").reset();
-}
-
-function deleteBill(button) {
-  let row = button.parentElement.parentElement;
-  row.remove();
+function showConsumers() {
+  let list = document.getElementById("consumersUl");
+  list.innerHTML = ""; // clear old list
+  consumers.forEach((c, i) => {
+    let li = document.createElement("li");
+    li.className = "list-group-item";
+    li.textContent = (i+1) + ". " + c;
+    list.appendChild(li);
+  });
+  document.getElementById("consumerList").style.display = "block";
 }
 </script>
 
